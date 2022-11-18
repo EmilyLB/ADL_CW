@@ -5,6 +5,7 @@ import pickle
 
 class GTZAN(data.Dataset):
     def __init__(self, dataset_path):
+        print("init")
         """
         Given the dataset path, create the GTZAN dataset. Creates the variable
         self.dataset which is a list of 4-element tuples, each of the form
@@ -21,6 +22,7 @@ class GTZAN(data.Dataset):
         self.dataset = pickle.load(open(dataset_path, 'rb'))
 
     def __getitem__(self, index):
+        print("get_item")
         """
         Given the index from the DataLoader, return the filename, spectrogram, 
         label, and audio samples.
@@ -39,6 +41,7 @@ class GTZAN(data.Dataset):
         return filename, spectrogram, label, samples
 
     def __len__(self):
+        print("len")
         """
         Returns the length of the dataset (length of the list of 4-element
             tuples). __len()__ always needs to be defined so that the DataLoader
