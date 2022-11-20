@@ -13,3 +13,11 @@ Copy folder from local computer to BC4: scp -r FOLDER_NAME bc4-external:DESTINAT
 Run code on bc4 for 30 seconds: sbatch --time 0-00:30 --mem 16GB --gres gpu:1
 
 Module sometimes missing: module load languages/anaconda3/2021-3.8.8-cuda-11.1-pytorch
+
+
+Next steps (20/11):
+    1. Add in validation/accuracy code
+    2. Add in optimisation/regularisation
+    3. Edit print statements
+    4. Try running on BC4
+    5. Play around with the hyperparameters

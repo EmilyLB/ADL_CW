@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 
 def evaluate(preds, gts_path):
+    print("evaluating accuracy")
     """
     Given the list of all model outputs (logits), and the path to the ground 
     truth (val.pkl), calculate the percentage of correctly classified segments
