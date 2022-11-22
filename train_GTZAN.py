@@ -27,10 +27,10 @@ def main():
     transform = transforms.ToTensor()
 
     GTZAN_train = GTZAN("train.pkl")
-    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 128, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
 
     GTZAN_test = GTZAN("val.pkl")
-    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 128, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
     # print(GTZAN_train.dataset.size())
     # print(train_loader.shape)
@@ -46,7 +46,7 @@ def main():
         model, train_loader, criterion, DEVICE, test_loader, optimiser
     )
 
-    trainer.train(epochs = 2, val_frequency = 1) # runs validated epoch+1%val_freq
+    trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
 
 class shallow_CNN(nn.Module):
     def __init__(self, height:int, width: int, channels: int, class_count: int):
@@ -85,7 +85,7 @@ class shallow_CNN(nn.Module):
         self.initialise_layer(self.fc1)
 
         print("starting dropout")
-        self.dropout1 = nn.Dropout2d(0.1)
+        self.dropout1 = nn.Dropout(0.1)
 
         print("starting fc2")
         self.fc2 = nn.Linear(200, 10)
@@ -126,7 +126,7 @@ class shallow_CNN(nn.Module):
         if hasattr(layer, "bias"):
             nn.init.zeros_(layer.bias)
         if hasattr(layer, "weight"):
-            nn.init.kaiming_normal_(layer.weight)
+            nn.init.kaiming_uniform_(layer.weight)
 
 class Trainer:
     def __init__(
@@ -155,21 +155,25 @@ class Trainer:
                 labels = labels.to(self.device)
 
                 output = self.model.forward(batch)
+                # print(output)
 
                 # L1 weight regularisation
                 penalty = 1e-4
                 l1_norm = sum(p.abs().sum() for p in self.model.parameters())
 
                 loss = self.criterion(output, labels)
+                # print("loss", loss)
                 loss += (penalty * l1_norm)
 
-                # self.optimiser.zero_grad()
-                # loss.backward()
-                # self.optimiser.step()
-
+                self.optimiser.zero_grad()
                 loss.backward()
                 self.optimiser.step()
-                self.optimiser.zero_grad() # For the backwards pass
+
+                # loss.backward()
+                # print(temp)
+                # self.optimiser.step()
+                # self.optimiser.zero_grad() # For the backwards pass
+
 
             if ((epoch + 1) % val_frequency) == 0:
                 print("In test if")
@@ -192,8 +196,8 @@ class Trainer:
                 batch = batch.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self.model(batch)
-                loss = self.criterion(outputs, labels)
-                total_loss += loss.item()
+                # loss = self.criterion(outputs, labels)
+                # total_loss += loss.item()
                 # preds = outputs
                 # results["preds"].extend(list(preds))
                 preds.extend(list(outputs))
