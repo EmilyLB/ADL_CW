@@ -9,6 +9,10 @@ from typing import NamedTuple #check if we can use this
 from dataset import GTZAN
 from evaluation import evaluate
 
+import torch.optim as optim
+from torch.optim.optimizer import Optimizer
+
+
 class SpectrogramShape(NamedTuple):
     height: int
     width: int
@@ -34,10 +38,12 @@ def main():
 
     model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
 
+    optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
+
     criterion = nn.CrossEntropyLoss()
 
     trainer = Trainer(
-        model, train_loader, criterion, DEVICE, test_loader
+        model, train_loader, criterion, DEVICE, test_loader, optimiser
     )
 
     trainer.train(epochs = 2, val_frequency = 1) # runs validated epoch+1%val_freq
@@ -130,12 +136,14 @@ class Trainer:
         criterion: nn.Module,
         device: torch.device,
         test_loader: DataLoader,
+        optimiser: Optimizer,
     ):
         self.model = model.to(device)
         self.device = device
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.criterion = criterion
+        self.optimiser = optimiser
 
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
@@ -147,13 +155,21 @@ class Trainer:
                 labels = labels.to(self.device)
 
                 output = self.model.forward(batch)
-                # print("output shape", output.shape)
-                # print("output[0]", output[0])
 
-                # print("labels shape", labels.shape)
+                # L1 weight regularisation
+                penalty = 1e-4
+                l1_norm = sum(p.abs().sum() for p in self.model.parameters())
+
                 loss = self.criterion(output, labels)
-                # print("loss shape", loss.shape)
+                loss += (penalty * l1_norm)
+
+                # self.optimiser.zero_grad()
+                # loss.backward()
+                # self.optimiser.step()
+
                 loss.backward()
+                self.optimiser.step()
+                self.optimiser.zero_grad() # For the backwards pass
 
             if ((epoch + 1) % val_frequency) == 0:
                 print("In test if")
@@ -162,10 +178,7 @@ class Trainer:
                 # so we have to switch back to train mode afterwards
                 self.model.train()
 
-                # with torch.no_grad():
-                #     preds = output.argmax(-1)
-                # accuracy = evaluate(output, "train.pkl")
-                # print("accuracy", accuracy)
+
 
     def test(self):
         # results = {"preds": []}
@@ -186,6 +199,6 @@ class Trainer:
                 preds.extend(list(outputs))
 
         accuracy = evaluate(preds, "val.pkl")
-        
+
 if __name__ == "__main__":
     main()
