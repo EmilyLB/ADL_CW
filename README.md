@@ -15,9 +15,15 @@ Run code on bc4 for 30 seconds: sbatch --time 0-00:30 --mem 16GB --gres gpu:1
 Module sometimes missing: module load languages/anaconda3/2021-3.8.8-cuda-11.1-pytorch
 
 
-Next steps (20/11):
+Next steps (22/11):
     1. Add in validation/accuracy code
     2. Add in optimisation/regularisation
     3. Edit print statements
     4. Try running on BC4
     5. Play around with the hyperparameters
+    
+  
+  Next steps (for 24/11):
+    1. independently run code for 100 and 200 epochs
+    2. start on tensorboard - loss curve, accuracy curve, confusion matrix
+    3. Deep CNN.
