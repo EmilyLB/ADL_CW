@@ -24,6 +24,10 @@ def main():
 
     GTZAN_train = GTZAN("train.pkl")
     train_loader = DataLoader(GTZAN_train.dataset, batch_size = 128, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+
+    GTZAN_test = GTZAN("val.pkl")
+    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 128, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+
     # print(GTZAN_train.dataset.size())
     # print(train_loader.shape)
     # print(train_loader)
@@ -33,10 +37,10 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     trainer = Trainer(
-        model, train_loader, criterion, DEVICE
+        model, train_loader, criterion, DEVICE, test_loader
     )
 
-    trainer.train(epochs = 2)
+    trainer.train(epochs = 2, val_frequency = 1) # runs validated epoch+1%val_freq
 
 class shallow_CNN(nn.Module):
     def __init__(self, height:int, width: int, channels: int, class_count: int):
@@ -46,9 +50,9 @@ class shallow_CNN(nn.Module):
 
         print("starting conv1 LHS")
         self.conv1_LHS = nn.Conv2d(
-            in_channels = self.input_shape.channels, 
-            out_channels = 16, 
-            kernel_size = (10, 23), 
+            in_channels = self.input_shape.channels,
+            out_channels = 16,
+            kernel_size = (10, 23),
             padding = "same",
         )
         self.initialise_layer(self.conv1_LHS)
@@ -60,9 +64,9 @@ class shallow_CNN(nn.Module):
 
         print("starting conv1 RHS")
         self.conv1_RHS = nn.Conv2d(
-            in_channels = self.input_shape.channels, 
-            out_channels = 16, 
-            kernel_size = (21, 20), 
+            in_channels = self.input_shape.channels,
+            out_channels = 16,
+            kernel_size = (21, 20),
             padding = "same",
         )
         self.initialise_layer(self.conv1_RHS)
@@ -124,37 +128,64 @@ class Trainer:
         model: nn.Module,
         train_loader: DataLoader,
         criterion: nn.Module,
-        device: torch.device, 
-        # val_loader: DataLoader,
+        device: torch.device,
+        test_loader: DataLoader,
     ):
         self.model = model.to(device)
         self.device = device
         self.train_loader = train_loader
-        # self.val_loader = val_loader
+        self.test_loader = test_loader
         self.criterion = criterion
 
-    def train(self, epochs: int):
+    def train(self, epochs: int, val_frequency: int):
         self.model.train()
         for epoch in range(0, epochs):
             print("epoch no", epoch)
-            self.model.train()
+            self.model.train() # Sets module in train mode
             for _, batch, labels, _ in self.train_loader:
                 batch = batch.to(self.device)
                 labels = labels.to(self.device)
 
                 output = self.model.forward(batch)
-                print("output shape", output.shape)
+                # print("output shape", output.shape)
                 # print("output[0]", output[0])
 
-                print("labels shape", labels.shape)
+                # print("labels shape", labels.shape)
                 loss = self.criterion(output, labels)
-                print("loss shape", loss.shape)
+                # print("loss shape", loss.shape)
                 loss.backward()
+
+            if ((epoch + 1) % val_frequency) == 0:
+                print("In test if")
+                self.test()
+                # self.validate() will put the model in validation mode,
+                # so we have to switch back to train mode afterwards
+                self.model.train()
 
                 # with torch.no_grad():
                 #     preds = output.argmax(-1)
-                accuracy = evaluate(output, "train.pkl")
-                print("accuracy", accuracy)
+                # accuracy = evaluate(output, "train.pkl")
+                # print("accuracy", accuracy)
 
+    def test(self):
+        # results = {"preds": []}
+        preds = []
+        total_loss = 0
+        self.model.eval() # Sets module in evaluation
+
+        # No need to track gradients for validation since we're not optimising
+        with torch.no_grad():
+            for _,batch,labels,_ in self.test_loader:
+                batch = batch.to(self.device)
+                labels = labels.to(self.device)
+                outputs = self.model(batch)
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
+                # preds = outputs
+                # results["preds"].extend(list(preds))
+                preds.extend(list(outputs))
+
+        accuracy = evaluate(preds, "val.pkl")
+        
 if __name__ == "__main__":
     main()
