@@ -34,7 +34,15 @@ Next steps (22/11):
     5. Play around with the hyperparameters
     
   
-  Next steps (for 24/11):
+Next steps (for 24/11):
     1. independently run code for 100 and 200 epochs
     2. start on tensorboard - loss curve, accuracy curve, confusion matrix
     3. Deep CNN.
+    
+Next steps (for 25/11):
+    1. Ask TAs questions
+        - Softmax
+        - Imports and confusion matrix visualisation
+        - Runtime
+    2. Finish cross-val
+    3. Work out next-steps for writing the report
