@@ -12,6 +12,9 @@ from evaluation import evaluate
 import torch.optim as optim
 from torch.optim.optimizer import Optimizer
 
+# For tensorboard
+from torch.utils.tensorboard import SummaryWriter
+
 
 class SpectrogramShape(NamedTuple):
     height: int
@@ -32,21 +35,20 @@ def main():
     GTZAN_test = GTZAN("val.pkl")
     test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
-    # print(GTZAN_train.dataset.size())
-    # print(train_loader.shape)
-    # print(train_loader)
-
     model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
 
     optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
 
     criterion = nn.CrossEntropyLoss()
 
+    summary_writer = SummaryWriter('logs', flush_secs=5)
+
     trainer = Trainer(
-        model, train_loader, criterion, DEVICE, test_loader, optimiser
+        model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
     )
 
     trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
+    summary_writer.close()
 
 class shallow_CNN(nn.Module):
     def __init__(self, height:int, width: int, channels: int, class_count: int):
@@ -54,7 +56,6 @@ class shallow_CNN(nn.Module):
         self.input_shape = SpectrogramShape(height=height, width=width, channels=channels)
         self.class_count = class_count
 
-        print("starting conv1 LHS")
         self.conv1_LHS = nn.Conv2d(
             in_channels = self.input_shape.channels,
             out_channels = 16,
@@ -63,12 +64,10 @@ class shallow_CNN(nn.Module):
         )
         self.initialise_layer(self.conv1_LHS)
 
-        print("starting pool1 LHS")
         self.pool1_LHS = nn.MaxPool2d(
             kernel_size = (1, 20),
         )
 
-        print("starting conv1 RHS")
         self.conv1_RHS = nn.Conv2d(
             in_channels = self.input_shape.channels,
             out_channels = 16,
@@ -77,22 +76,17 @@ class shallow_CNN(nn.Module):
         )
         self.initialise_layer(self.conv1_RHS)
 
-        print("starting pool1 RHS")
         self.pool1_RHS = nn.MaxPool2d(kernel_size = (20, 1))
 
-        print("starting fc1")
         self.fc1 = nn.Linear(10240, 200)
         self.initialise_layer(self.fc1)
 
-        print("starting dropout")
         self.dropout1 = nn.Dropout(0.1)
 
-        print("starting fc2")
         self.fc2 = nn.Linear(200, 10)
         self.initialise_layer(self.fc2)
 
     def forward(self, x):
-        # print("starting forward")
         x_LHS = self.conv1_LHS(x)
         x_LHS = F.leaky_relu(x_LHS, 0.3)
         x_LHS = self.pool1_LHS(x_LHS)
@@ -106,7 +100,7 @@ class shallow_CNN(nn.Module):
         x_merged = self.merge(x_LHS, x_RHS)
         x = self.fc_layers(x_merged)
 
-        x = F.softmax(x, 1)
+        # x = F.softmax(x, 1)
         return x
 
     def merge(self, x_LHS, x_RHS):
@@ -137,6 +131,7 @@ class Trainer:
         device: torch.device,
         test_loader: DataLoader,
         optimiser: Optimizer,
+        summary_writer: SummaryWriter,
     ):
         self.model = model.to(device)
         self.device = device
@@ -144,6 +139,7 @@ class Trainer:
         self.test_loader = test_loader
         self.criterion = criterion
         self.optimiser = optimiser
+        self.summary_writer = summary_writer
 
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
@@ -155,14 +151,12 @@ class Trainer:
                 labels = labels.to(self.device)
 
                 output = self.model.forward(batch)
-                # print(output)
 
                 # L1 weight regularisation
                 penalty = 1e-4
                 l1_norm = sum(p.abs().sum() for p in self.model.parameters())
 
                 loss = self.criterion(output, labels)
-                # print("loss", loss)
                 loss += (penalty * l1_norm)
 
                 self.optimiser.zero_grad()
@@ -174,6 +168,12 @@ class Trainer:
                 # self.optimiser.step()
                 # self.optimiser.zero_grad() # For the backwards pass
 
+                # For tensorboard output
+                preds = output.argmax(-1)
+                train_accuracy = self.accuracy(preds, labels) * 100
+                self.summary_writer.add_scalar('accuracy/train', train_accuracy, epoch)
+                self.summary_writer.add_scalar('loss/train', loss.item(), epoch)
+
 
             if ((epoch + 1) % val_frequency) == 0:
                 print("In test if")
@@ -182,10 +182,14 @@ class Trainer:
                 # so we have to switch back to train mode afterwards
                 self.model.train()
 
+    def accuracy(self, preds, labels):
+        assert len(labels) == len(preds)
+        acc = float((preds == labels).sum()) / len(labels)
+        return acc
+
 
 
     def test(self):
-        # results = {"preds": []}
         preds = []
         total_loss = 0
         self.model.eval() # Sets module in evaluation
@@ -196,10 +200,6 @@ class Trainer:
                 batch = batch.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self.model(batch)
-                # loss = self.criterion(outputs, labels)
-                # total_loss += loss.item()
-                # preds = outputs
-                # results["preds"].extend(list(preds))
                 preds.extend(list(outputs))
 
         accuracy = evaluate(preds, "val.pkl")
