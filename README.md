@@ -14,6 +14,15 @@ Run code on bc4 for 30 seconds: sbatch --time 0-00:30 --mem 16GB --gres gpu:1
 
 Module sometimes missing: module load languages/anaconda3/2021-3.8.8-cuda-11.1-pytorch
 
+Tensorboard: 
+In bc4:
+    PORT=$((($UID-6025) % 65274))
+    tensorboard --logdir logs --port $PORT --bind_all
+
+In another terminal (not bc4):
+    ssh -N -L 6006:localhost:<PORT> bc4-external
+    
+
 
 Next steps (22/11):
     1. Add in validation/accuracy code
