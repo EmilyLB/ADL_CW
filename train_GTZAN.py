@@ -3,6 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchmetrics import ConfusionMatrix
+
 from multiprocessing import cpu_count #check if we can use this
 from typing import NamedTuple #check if we can use this
 
@@ -47,7 +49,11 @@ def main():
         model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
     )
 
-    trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
+    test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
+    confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
+    conf_matrix = confmat(test_preds, test_labels)
+    print(conf_matrix)
+
     summary_writer.close()
 
 class shallow_CNN(nn.Module):
@@ -177,20 +183,21 @@ class Trainer:
 
             if ((epoch + 1) % val_frequency) == 0:
                 print("In test if")
-                self.test()
+                test_preds, test_labels = self.test()
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
                 self.model.train()
+        
+        return test_preds, test_labels
 
     def accuracy(self, preds, labels):
         assert len(labels) == len(preds)
         acc = float((preds == labels).sum()) / len(labels)
         return acc
 
-
-
     def test(self):
         preds = []
+        all_labels = []
         total_loss = 0
         self.model.eval() # Sets module in evaluation
 
@@ -201,8 +208,14 @@ class Trainer:
                 labels = labels.to(self.device)
                 outputs = self.model(batch)
                 preds.extend(list(outputs))
+                all_labels.extend(list(labels))
 
         accuracy = evaluate(preds, "val.pkl")
+
+        preds_tensor = torch.stack(preds)
+        all_labels_tensor = torch.stack(all_labels)
+        preds = preds_tensor.argmax(-1)
+        return preds, all_labels_tensor
 
 if __name__ == "__main__":
     main()
