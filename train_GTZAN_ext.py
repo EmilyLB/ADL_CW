@@ -32,9 +32,31 @@ def main():
     transform = transforms.ToTensor()
 
     GTZAN_train = GTZAN("train.pkl")
-    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
-
     GTZAN_test = GTZAN("val.pkl")
+
+    genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
+    split_train = {"blues": [], "clasical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
+    split_test = {"blues": [], "clasical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
+    split_by_genre = {"blues": [], "clasical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
+
+
+    train_counter = 0
+    train_counter_next = 0
+    test_counter = 0
+    test_counter_next = 0
+    for label in genre_list:
+        train_counter_next += 1125
+        split_by_genre[label] = GTZAN_train.dataset[train_counter:train_counter_next]
+        train_counter = train_counter_next
+        print(label, len(split_by_genre[label]))
+
+        test_counter_next += 375
+        split_by_genre[label].extend(list(GTZAN_test.dataset[test_counter:test_counter_next]))
+        test_counter = test_counter_next
+        print(label, len(split_by_genre[label]))
+
+
+    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
     test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
     model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
