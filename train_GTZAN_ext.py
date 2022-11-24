@@ -3,10 +3,11 @@ from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from torchmetrics import ConfusionMatrix
+from torchmetrics import ConfusionMatrix #check if we can use this
 
 from multiprocessing import cpu_count #check if we can use this
 from typing import NamedTuple #check if we can use this
+import random #check if we can use this
 
 from dataset import GTZAN
 from evaluation import evaluate
@@ -35,10 +36,7 @@ def main():
     GTZAN_test = GTZAN("val.pkl")
 
     genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
-    split_train = {"blues": [], "clasical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
-    split_test = {"blues": [], "clasical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
-    split_by_genre = {"blues": [], "clasical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
-
+    split_by_genre = {"blues": [], "classical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
 
     train_counter = 0
     train_counter_next = 0
@@ -48,12 +46,13 @@ def main():
         train_counter_next += 1125
         split_by_genre[label] = GTZAN_train.dataset[train_counter:train_counter_next]
         train_counter = train_counter_next
-        print(label, len(split_by_genre[label]))
 
         test_counter_next += 375
         split_by_genre[label].extend(list(GTZAN_test.dataset[test_counter:test_counter_next]))
         test_counter = test_counter_next
-        print(label, len(split_by_genre[label]))
+
+        random.seed(10) #so that we get the same shuffle for each run
+        split_by_genre[label] = random.shuffle(split_by_genre[label])
 
 
     train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
