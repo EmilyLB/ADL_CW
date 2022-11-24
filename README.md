@@ -20,7 +20,7 @@ In bc4:
     tensorboard --logdir logs --port $PORT --bind_all
 
 In another terminal (not bc4):
-    ssh -N -L 6006:localhost:<PORT> bc4-external
+    ssh -N -L 6006:localhost:port bc4-external
     
 Remove folder with stuff in it: rm -rf <folder_name>
     
