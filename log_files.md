@@ -14,3 +14,16 @@
 | Log No. |10958058|10958059|10958060|10955725 (old)
 | :---:   | :---: | :---: | :---: | :---: |
 | Accuracy | errored  | 65.65  |  63.44| 63.17 (old)
+
+
+## without softmax, batch size of 50, 200 epochs
+| Log No. |10957596|
+| :---:   | :---: |
+| Accuracy |65.15|
+
+
+
+# Questions
+1. about softmax
+2. libraries - what can we use. In particular for confusion matrix but also NamedTuple.
+3. How is it meant to run in 30 seconds
