@@ -52,7 +52,28 @@ def main():
         test_counter = test_counter_next
 
         random.seed(10) #so that we get the same shuffle for each run
-        split_by_genre[label] = random.shuffle(split_by_genre[label])
+        random.shuffle(split_by_genre[label])
+
+    indexes = [0,1,2,3]
+    splits = [[0,375],[375,750],[750,1125],[1125,1500]]
+    data = {"training":[], "test":[]}
+    for i in range(4):
+        data = {"training":[], "test":[]}
+        for genre in split_by_genre:
+            # Adds 25% of each genre to the test data.
+            data["test"].extend(split_by_genre[genre][splits[i][0]:splits[i][1]])
+            indexes.remove(i)
+            for index in indexes:
+                a = splits[index][0]
+                b = splits[index][1]
+                data["training"].extend(split_by_genre[genre][a:b])
+            indexes = [0,1,2,3]
+        # You have your training data and your test data for one fold
+        print("Length of training",len(data["training"]))
+        print("Length of test",len(data["test"]))
+        break
+
+
 
 
     train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
@@ -167,7 +188,6 @@ class Trainer:
         self.criterion = criterion
         self.optimiser = optimiser
         self.summary_writer = summary_writer
-
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
         for epoch in range(0, epochs):
@@ -208,7 +228,7 @@ class Trainer:
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
                 self.model.train()
-        
+
         return test_preds, test_labels
 
     def accuracy(self, preds, labels):
