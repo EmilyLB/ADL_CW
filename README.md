@@ -22,6 +22,8 @@ In bc4:
 In another terminal (not bc4):
     ssh -N -L 6006:localhost:<PORT> bc4-external
     
+Remove folder with stuff in it: rm -rf <folder_name>
+    
 
 
 Next steps (22/11):
