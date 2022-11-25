@@ -46,3 +46,11 @@ Next steps (for 25/11):
         - Runtime
     2. Finish cross-val
     3. Work out next-steps for writing the report
+    
+ Next steps (for weekend)
+  1. Run it without cross-validation and get accurarcy for training and test 
+  
+  2. Run it with cross-validation and get accuracy for training and test (for both, keep batch size=64 and do 100 epochs)
+  
+  3. Start reading papers for related work (2016 onwards) and also consider extension , let each other know what we are reading.
+
