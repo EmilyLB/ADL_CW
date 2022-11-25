@@ -57,7 +57,10 @@ def main():
     indexes = [0,1,2,3]
     splits = [[0,375],[375,750],[750,1125],[1125,1500]]
     data = {"training":[], "test":[]}
+    per_model_accuracy = []
+    # Training four models and will then find the mean accuracy of each model.
     for i in range(4):
+        print("Training model",i)
         data = {"training":[], "test":[]}
         for genre in split_by_genre:
             # Adds 25% of each genre to the test data.
@@ -69,34 +72,69 @@ def main():
                 data["training"].extend(split_by_genre[genre][a:b])
             indexes = [0,1,2,3]
         # You have your training data and your test data for one fold
-        print("Length of training",len(data["training"]))
-        print("Length of test",len(data["test"]))
-        break
+        print("Length of training",len(data["training"])) # 11,250
+        print("Length of test",len(data["test"])) # 3,750
+
+        train_loader = DataLoader(data["training"], batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+        test_loader = DataLoader(data["test"], batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+
+        model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
+
+        optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
+
+        criterion = nn.CrossEntropyLoss()
+
+        summary_writer = SummaryWriter('logs', flush_secs=5)
+
+        trainer = Trainer(
+            model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
+        )
+
+        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 10) # runs validated epoch+1%val_freq
+
+        # Compute model accuracy
+        num_correct = (test_preds == test_labels).sum()
+        accuracy_model = (num_correct/len(test_labels)) * 100
+
+        # confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
+        # conf_matrix = confmat(test_preds, test_labels)
+        # print(conf_matrix)
+
+        summary_writer.close()
+
+        per_model_accuracy.append(accuracy_model)
+
+    print("All model accuracy:",per_model_accuracy)
+    # Calculate the mean accuracy of the four models
+    mean_accuracy = per_model_accuracy.sum()/4
+    print("Mean accuracy:",mean_accuracy)
 
 
 
 
-    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
-    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
-    model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
 
-    optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
-
-    criterion = nn.CrossEntropyLoss()
-
-    summary_writer = SummaryWriter('logs', flush_secs=5)
-
-    trainer = Trainer(
-        model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
-    )
-
-    test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
-    confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
-    conf_matrix = confmat(test_preds, test_labels)
-    print(conf_matrix)
-
-    summary_writer.close()
+    # train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+    # test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+    #
+    # model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
+    #
+    # optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
+    #
+    # criterion = nn.CrossEntropyLoss()
+    #
+    # summary_writer = SummaryWriter('logs', flush_secs=5)
+    #
+    # trainer = Trainer(
+    #     model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
+    # )
+    #
+    # test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
+    # confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
+    # conf_matrix = confmat(test_preds, test_labels)
+    # print(conf_matrix)
+    #
+    # summary_writer.close()
 
 class shallow_CNN(nn.Module):
     def __init__(self, height:int, width: int, channels: int, class_count: int):
