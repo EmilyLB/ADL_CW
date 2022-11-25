@@ -2,12 +2,11 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision import transforms
-from torchmetrics import ConfusionMatrix #check if we can use this
+from torchmetrics import ConfusionMatrix 
 
-from multiprocessing import cpu_count #check if we can use this
-from typing import NamedTuple #check if we can use this
-import random #check if we can use this
+from multiprocessing import cpu_count 
+from typing import NamedTuple 
+import random 
 
 from dataset import GTZAN
 from evaluation import evaluate
@@ -18,6 +17,9 @@ from torch.optim.optimizer import Optimizer
 # For tensorboard
 from torch.utils.tensorboard import SummaryWriter
 
+# For confusion matrix
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 class SpectrogramShape(NamedTuple):
     height: int
@@ -30,112 +32,123 @@ else:
     DEVICE = torch.device("cpu")
 
 def main():
-    transform = transforms.ToTensor()
 
-    GTZAN_train = GTZAN("train.pkl")
-    GTZAN_test = GTZAN("val.pkl")
+      
 
-    genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
-    split_by_genre = {"blues": [], "classical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
+    def shallow_and_ext1():
+        GTZAN_train = GTZAN("train.pkl")
+        GTZAN_test = GTZAN("val.pkl")
 
-    train_counter = 0
-    train_counter_next = 0
-    test_counter = 0
-    test_counter_next = 0
-    for label in genre_list:
-        train_counter_next += 1125
-        split_by_genre[label] = GTZAN_train.dataset[train_counter:train_counter_next]
-        train_counter = train_counter_next
+        genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
+        split_by_genre = {"blues": [], "classical": [], "country": [], "disco": [], "hiphop": [], "jazz": [], "metal": [], "pop": [], "reggae": [], "rock": []}
 
-        test_counter_next += 375
-        split_by_genre[label].extend(list(GTZAN_test.dataset[test_counter:test_counter_next]))
-        test_counter = test_counter_next
+        train_counter = 0
+        train_counter_next = 0
+        test_counter = 0
+        test_counter_next = 0
+        for label in genre_list:
+            train_counter_next += 1125
+            split_by_genre[label] = GTZAN_train.dataset[train_counter:train_counter_next]
+            train_counter = train_counter_next
 
-        random.seed(10) #so that we get the same shuffle for each run
-        random.shuffle(split_by_genre[label])
+            test_counter_next += 375
+            split_by_genre[label].extend(list(GTZAN_test.dataset[test_counter:test_counter_next]))
+            test_counter = test_counter_next
 
-    indexes = [0,1,2,3]
-    splits = [[0,375],[375,750],[750,1125],[1125,1500]]
-    data = {"training":[], "test":[]}
-    per_model_accuracy = []
-    # Training four models and will then find the mean accuracy of each model.
-    for i in range(4):
-        print("Training model",i)
+            random.seed(10) #so that we get the same shuffle for each run
+            random.shuffle(split_by_genre[label])
+
+        indexes = [0,1,2,3]
+        splits = [[0,375],[375,750],[750,1125],[1125,1500]]
         data = {"training":[], "test":[]}
-        for genre in split_by_genre:
-            # Adds 25% of each genre to the test data.
-            data["test"].extend(split_by_genre[genre][splits[i][0]:splits[i][1]])
-            indexes.remove(i)
-            for index in indexes:
-                a = splits[index][0]
-                b = splits[index][1]
-                data["training"].extend(split_by_genre[genre][a:b])
-            indexes = [0,1,2,3]
-        # You have your training data and your test data for one fold
-        print("Length of training",len(data["training"])) # 11,250
-        print("Length of test",len(data["test"])) # 3,750
+        per_model_accuracy = []
+        # Training four models and will then find the mean accuracy of each model.
+        for i in range(4):
+            print("Training model",i)
+            data = {"training":[], "test":[]}
+            for genre in split_by_genre:
+                # Adds 25% of each genre to the test data.
+                data["test"].extend(split_by_genre[genre][splits[i][0]:splits[i][1]])
+                indexes.remove(i)
+                for index in indexes:
+                    a = splits[index][0]
+                    b = splits[index][1]
+                    data["training"].extend(split_by_genre[genre][a:b])
+                indexes = [0,1,2,3]
+            # You have your training data and your test data for one fold
+            print("Length of training",len(data["training"])) # 11,250
+            print("Length of test",len(data["test"])) # 3,750
 
-        train_loader = DataLoader(data["training"], batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
-        test_loader = DataLoader(data["test"], batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+            train_loader = DataLoader(data["training"], batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+            test_loader = DataLoader(data["test"], batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
+            model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
+
+            optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
+
+            criterion = nn.CrossEntropyLoss()
+
+            summary_writer = SummaryWriter('logs', flush_secs=5)
+
+            trainer = Trainer(
+                model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
+            )
+
+            test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 10) # runs validated epoch+1%val_freq
+
+            # Compute model accuracy
+            num_correct = (test_preds == test_labels).sum()
+            accuracy_model = (num_correct/len(test_labels)) * 100
+
+            # confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
+            # conf_matrix = confmat(test_preds, test_labels)
+            # print(conf_matrix)
+
+            summary_writer.close()
+
+            per_model_accuracy.append(accuracy_model)
+
+        print("All model accuracy:",per_model_accuracy)
+        # Calculate the mean accuracy of the four models
+        mean_accuracy = per_model_accuracy.sum()/4
+        print("Mean accuracy:",mean_accuracy)
+
+    def base_shallow():
+        GTZAN_train = GTZAN("train.pkl")
+        GTZAN_test = GTZAN("val.pkl")
+        
+        train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+        test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+        
         model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
-
+        
         optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
-
+        
         criterion = nn.CrossEntropyLoss()
-
+        
         summary_writer = SummaryWriter('logs', flush_secs=5)
-
+        
         trainer = Trainer(
             model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
         )
+        
+        
+        genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
-        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 10) # runs validated epoch+1%val_freq
 
-        # Compute model accuracy
-        num_correct = (test_preds == test_labels).sum()
-        accuracy_model = (num_correct/len(test_labels)) * 100
-
-        # confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
-        # conf_matrix = confmat(test_preds, test_labels)
-        # print(conf_matrix)
+        test_preds, test_labels = trainer.train(epochs = 1, val_frequency = 1) # runs validated epoch+1%val_freq
+        conf_matrix = confusion_matrix(test_labels, test_preds, normalize = 'true')
+        print(test_labels)
+        print(conf_matrix)
+        conf_heatmap = sns.heatmap(conf_matrix, annot=True)
+        conf_heatmap.figure.savefig("output.png")
+        summary_writer.add_figure("Confusion Matrix", conf_heatmap)
 
         summary_writer.close()
 
-        per_model_accuracy.append(accuracy_model)
-
-    print("All model accuracy:",per_model_accuracy)
-    # Calculate the mean accuracy of the four models
-    mean_accuracy = per_model_accuracy.sum()/4
-    print("Mean accuracy:",mean_accuracy)
-
-
-
-
-
-
-    # train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
-    # test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
-    #
-    # model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
-    #
-    # optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
-    #
-    # criterion = nn.CrossEntropyLoss()
-    #
-    # summary_writer = SummaryWriter('logs', flush_secs=5)
-    #
-    # trainer = Trainer(
-    #     model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
-    # )
-    #
-    # test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
-    # confmat = ConfusionMatrix(num_classes = 10, normalize = 'true')
-    # conf_matrix = confmat(test_preds, test_labels)
-    # print(conf_matrix)
-    #
-    # summary_writer.close()
-
+    base_shallow()  
+    # shallow_and_ext1()
+    
 class shallow_CNN(nn.Module):
     def __init__(self, height:int, width: int, channels: int, class_count: int):
         super().__init__()
@@ -294,7 +307,11 @@ class Trainer:
         preds_tensor = torch.stack(preds)
         all_labels_tensor = torch.stack(all_labels)
         preds = preds_tensor.argmax(-1)
-        return preds, all_labels_tensor
+
+        preds = list(preds)
+        all_labels = list(all_labels_tensor)
+
+        return preds, all_labels
 
 if __name__ == "__main__":
     main()
