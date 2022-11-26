@@ -1,5 +1,16 @@
 # Log files to keep
 
+
+# 26.11
+## base_shallow
+| Log No. |10969789|
+| :---:   | :---: |
+| Raw accuracy |62.64|
+|Train accuracy| 100.0|
+
+
+# Old logs
+
 ## 100 epochs
 | Log No. |10957596|10957669|10957864|10957890|
 | :---:   | :---: | :---:   | :---: | :---: |
@@ -20,8 +31,6 @@
 | Log No. |10957596|
 | :---:   | :---: |
 | Accuracy |65.15|
-
-
 
 # Questions
 1. about softmax
