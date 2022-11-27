@@ -20,6 +20,7 @@ from torch.utils.tensorboard import SummaryWriter
 # For confusion matrix
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
+import pandas as pd
 
 class SpectrogramShape(NamedTuple):
     height: int
@@ -133,14 +134,15 @@ def main():
 
         genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
+        test_preds, test_labels = trainer.train(epochs = 1, val_frequency = 1) # runs validated epoch+1%val_freq
+        test_preds = list(test_preds)
+        test_labels = list(test_labels)
 
-        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
         conf_matrix = confusion_matrix(test_labels, test_preds, normalize = 'true')
-        print(test_labels)
+        df_cm = pd.DataFrame(conf_matrix, index=[genre for genre in genre_list], columns=[genre for genre in genre_list])
         print(conf_matrix)
-        conf_heatmap = sns.heatmap(conf_matrix, annot=True)
-        conf_heatmap.figure.savefig("output.png")
-        summary_writer.add_figure("Confusion Matrix", conf_heatmap)
+        conf_heatmap = sns.heatmap(df_cm, annot=True)
+        summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
 
         summary_writer.close()
 
@@ -237,6 +239,7 @@ class Trainer:
         self.criterion = criterion
         self.optimiser = optimiser
         self.summary_writer = summary_writer
+    
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
         for epoch in range(0, epochs):
@@ -306,10 +309,10 @@ class Trainer:
         all_labels_tensor = torch.stack(all_labels)
         preds = preds_tensor.argmax(-1)
 
-        preds = list(preds)
-        all_labels = list(all_labels_tensor)
+        # preds = list(preds)
+        # all_labels = list(all_labels_tensor)
 
-        return preds, all_labels
+        return preds, all_labels_tensor
 
 if __name__ == "__main__":
     main()
