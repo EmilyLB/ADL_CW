@@ -8,6 +8,12 @@
 | Raw accuracy |62.64|
 |Train accuracy| 100.0|
 
+# shallow + ext1 (100 epochs)
+| Log No. |10970075 - 64| 10970076 - 64 |10970077 - 32 | 10970078 - 128 |
+| :---:   | :---: | :---: | :---: |:---: |
+| Raw accuracy | | | | |
+|Train accuracy| | | | |
+
 
 # Old logs
 
