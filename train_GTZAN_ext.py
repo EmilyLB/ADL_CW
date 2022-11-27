@@ -21,6 +21,7 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class SpectrogramShape(NamedTuple):
     height: int
@@ -107,10 +108,10 @@ def main():
 
             per_model_accuracy.append(accuracy_model)
 
-        print("All model accuracy:",per_model_accuracy)
+        print("All model accuracy:", per_model_accuracy)
         # Calculate the mean accuracy of the four models
         mean_accuracy = sum(per_model_accuracy)/4
-        print("Mean accuracy:",mean_accuracy)
+        print("Mean accuracy:", mean_accuracy)
 
     def base_shallow():
         GTZAN_train = GTZAN("train.pkl")
@@ -141,7 +142,9 @@ def main():
         conf_matrix = confusion_matrix(test_labels, test_preds, normalize = 'true')
         df_cm = pd.DataFrame(conf_matrix, index=[genre for genre in genre_list], columns=[genre for genre in genre_list])
         print(conf_matrix)
+        plt.figure(figsize=(10, 8))
         conf_heatmap = sns.heatmap(df_cm, annot=True)
+        conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="100 Epoch Model")
         summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
 
         summary_writer.close()
