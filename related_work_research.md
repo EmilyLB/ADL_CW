@@ -26,12 +26,21 @@ https://ietresearch.onlinelibrary.wiley.com/doi/epdf/10.1049/el.2019.4202
 * MusicRecNet has 3 layers and has considerably better accuracy scores
 
 
-# Music Genre Classification using Machine Learning Techniques
+# Music Genre Classification using Machine Learning Techniques (Bahuleyan 2018)
 https://arxiv.org/pdf/1804.01149.pdf
 
-*
-*
+* Compares two models - deep CNN and one feeding features in the time domain and frequency domain to ML models such as Random Forest, SVM etc.
+* Uses 'Audio Set' dataset
+* Again this paper has a good literature review
+* (This paper is very good at explaining the CNN architecture and we can use this as inspiration for describing ours)
+* Uses transfer learning and fine tuning
+* * Found that fine tuning setting gave v slightly better results than transfer learning (0.63 to 0.64)
+* * need to research this more if this is a paper we choose to use later
+* So for CNN it is pretty much as we have used it
+* For the hand-crafted features they pick out quite a few features, and then report which contributes the most, having ran it through 4 ML models.
+
+* Conclusion was that CNN was better and fine tuning CNN didn't give much better results than transfer learning CNN 🤯
 
 # Extension ideas:
-* Autoencoders
+* Autoencoder
 * Using different classifiers - currently we're using ?MLP? but trying out SVM or LDA
