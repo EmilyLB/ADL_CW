@@ -41,6 +41,25 @@ https://arxiv.org/pdf/1804.01149.pdf
 
 * Conclusion was that CNN was better and fine tuning CNN didn't give much better results than transfer learning CNN 🤯
 
+
+# Music Genre Classification using Transfer Learning on log-based MEL Spectrogram 
+https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9418035
+* Mentions a bunch of different methods from different papers. One such paper SVMs were the best classifiers for Content Based Music Classification. 
+* Proposing a transfer learning approach : "The transfer learning option helps speed up the learning process since the core features of the image have already been properly learned by the model and so the generalization during the fine tuning can focus more on the spectrogram for better classification to take place"
+* Transfer learning speeds up the training process and makes performance of deep learning models better. 
+* Some of the training & metrics approaches could be useful such as a discriminitive learning rate 
+
+# Exploring Data Augmentation to Improve Music Genre Classification with ConvNets
+https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8489166
+* They cover: noise addition, pitch shifting, time stretching and loudness variance. Pitch shifting and time stretching would fall under extension 1 but we could consider doing noise addition or loudness variance
+* They use the Latin music database
+* One paper mentioned achieved their highest accuracy by applying data augmentation techniques in both the training and test sets
+* Artist filter concept could be something we mention in the report as a limitation. This basically is a method of ensuring that songs from the same artist are not found in the training set and the test set so that the classifier doesn't become a classifier of author recognition rather than genre recognition. We do not have access to author information to be able to do this.
+* This paper does 3-fold cross val and present the average accross the folds and standard deviation 
+* Out of the two options: noise addition and loudness variance, loudness variance produces better results.
+* Mentions sum rules and product rules and these seems to affect accuracy but idk what they are rly
+
 # Extension ideas:
 * Autoencoder
 * Using different classifiers - currently we're using ?MLP? but trying out SVM or LDA
+* Data augmentation that is not pitch shifting or time stretching (sadface because pitch shifting is best)
