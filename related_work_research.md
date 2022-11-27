@@ -13,14 +13,25 @@ https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9598979
 * Essentially they're trying to see if you can use the features picked out by an autoencoder to classify the music, and they find that no this is not possible even with latent spaces of varying sizes.
 * They did reference the 2020 Elbir paper for a similar technique
 
+# Music genre classification and music recommendation by using deep learning (2020 - Elbir)
+https://ietresearch.onlinelibrary.wiley.com/doi/epdf/10.1049/el.2019.4202
+
+* This paper has lots of references to other research done with the GTZAN dataset
+* Came up with MusicRecNet
+* This study wanted to focus on both music genre classification AND music recommendation (the latter isn't focused on so much in other papers)
+* MusicRecNet can detect plagiarism 🤨
+* In their MusicRecNet they use different types of classifiers and then evaluate the performance of each. (given in Table 2)
+* * We can see that some perform a lot better than others
+* "When the performance results are examined, some similar music genres can lead to mis-classification and mis-recommendation such as Jazz and Classic"
+* MusicRecNet has 3 layers and has considerably better accuracy scores
+
+
 # Music Genre Classification using Machine Learning Techniques
 https://arxiv.org/pdf/1804.01149.pdf
 
 *
 *
 
-# Music genre classification and music recommendation by using deep learning (2020 - Elbir)
-https://ietresearch.onlinelibrary.wiley.com/doi/epdf/10.1049/el.2019.4202
-
-*
-*
+# Extension ideas:
+* Autoencoders
+* Using different classifiers - currently we're using ?MLP? but trying out SVM or LDA
