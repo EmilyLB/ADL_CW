@@ -135,9 +135,9 @@ def main():
 
         genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
-        test_preds, test_labels = trainer.train(epochs = 1, val_frequency = 1) # runs validated epoch+1%val_freq
-        test_preds = list(test_preds)
-        test_labels = list(test_labels)
+        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
+        test_preds = list(test_preds.cpu().numpy())
+        test_labels = list(test_labels.cpu().numpy())
 
         conf_matrix = confusion_matrix(test_labels, test_preds, normalize = 'true')
         df_cm = pd.DataFrame(conf_matrix, index=[genre for genre in genre_list], columns=[genre for genre in genre_list])
@@ -242,7 +242,7 @@ class Trainer:
         self.criterion = criterion
         self.optimiser = optimiser
         self.summary_writer = summary_writer
-    
+
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
         for epoch in range(0, epochs):
