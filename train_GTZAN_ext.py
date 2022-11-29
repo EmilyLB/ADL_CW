@@ -2,7 +2,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchmetrics import ConfusionMatrix
 
 from multiprocessing import cpu_count
 from typing import NamedTuple
@@ -132,20 +131,30 @@ def main():
             model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
         )
 
-
         genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
-        test_preds, test_labels = trainer.train(epochs = 1, val_frequency = 1) # runs validated epoch+1%val_freq
-        test_preds = list(test_preds)
-        test_labels = list(test_labels)
+        test_preds, test_labels, pop_match, hip_hop_match, reggae_match = trainer.train(epochs = 100, val_frequency = 100) # runs validated epoch+1%val_freq
+        
+        test_preds = list(test_preds.cpu().numpy())
+        test_labels = list(test_labels.cpu().numpy())
 
         conf_matrix = confusion_matrix(test_labels, test_preds, normalize = 'true')
         df_cm = pd.DataFrame(conf_matrix, index=[genre for genre in genre_list], columns=[genre for genre in genre_list])
-        print(conf_matrix)
+        # print(conf_matrix)
         plt.figure(figsize=(10, 8))
         conf_heatmap = sns.heatmap(df_cm, annot=True)
         conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="100 Epoch Model")
         summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
+
+        pop_match_spect = pop_match.cpu().numpy()
+        summary_writer.add_image("Pop Spectrogram", pop_match_spect, dataformats='CHW')
+
+        # pop_match = pop_match[-1, :, :]
+        hiphop_match_spect = hip_hop_match.cpu().numpy()
+        summary_writer.add_image("HipHop Spectrogram", hiphop_match_spect, dataformats='CHW')
+
+        reggae_match_spect = reggae_match.cpu().numpy()
+        summary_writer.add_image("Reggae Spectrogram", reggae_match_spect, dataformats='CHW')
 
         summary_writer.close()
 
@@ -279,12 +288,13 @@ class Trainer:
 
             if ((epoch + 1) % val_frequency) == 0:
                 print("Train accuracy:", train_accuracy)
-                test_preds, test_labels = self.test()
+                test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
+                
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
                 self.model.train()
 
-        return test_preds, test_labels
+        return test_preds, test_labels, pop_match, hip_hop_match, reggae_match
 
     def accuracy(self, preds, labels):
         assert len(labels) == len(preds)
@@ -306,6 +316,15 @@ class Trainer:
                 preds.extend(list(outputs))
                 all_labels.extend(list(labels))
 
+                for i in range(0, len(batch)): #for each value in the batch
+                    output = torch.argmax(outputs[i])
+                    if (labels[i] == 7) and (output == 7):
+                        pop_match = batch[i]
+                    if (labels[i] == 4) and (output == 9):
+                        hip_hop_match = batch[i]
+                    if (labels[i] == 9) and (output == 4):
+                        reggae_match = batch[i]
+
         accuracy = evaluate(preds, "val.pkl")
 
         preds_tensor = torch.stack(preds)
@@ -315,7 +334,7 @@ class Trainer:
         # preds = list(preds)
         # all_labels = list(all_labels_tensor)
 
-        return preds, all_labels_tensor
+        return preds, all_labels_tensor, pop_match, hip_hop_match, reggae_match
 
 if __name__ == "__main__":
     main()
