@@ -2,11 +2,11 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchmetrics import ConfusionMatrix 
+from torchmetrics import ConfusionMatrix
 
-from multiprocessing import cpu_count 
-from typing import NamedTuple 
-import random 
+from multiprocessing import cpu_count
+from typing import NamedTuple
+import random
 
 from dataset import GTZAN
 from evaluation import evaluate
@@ -20,6 +20,8 @@ from torch.utils.tensorboard import SummaryWriter
 # For confusion matrix
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
+import pandas as pd
+import matplotlib.pyplot as plt
 
 class SpectrogramShape(NamedTuple):
     height: int
@@ -32,8 +34,6 @@ else:
     DEVICE = torch.device("cpu")
 
 def main():
-
-      
 
     def shallow_and_ext1():
         GTZAN_train = GTZAN("train.pkl")
@@ -76,8 +76,8 @@ def main():
                     data["training"].extend(split_by_genre[genre][a:b])
                 indexes = [0,1,2,3]
             # You have your training data and your test data for one fold
-            print("Length of training",len(data["training"])) # 11,250
-            print("Length of test",len(data["test"])) # 3,750
+            # Length of training: 11,250
+            # Length of testing: 3,750
 
             train_loader = DataLoader(data["training"], batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
             test_loader = DataLoader(data["test"], batch_size = 64, num_workers = cpu_count(), pin_memory = True)
@@ -108,47 +108,50 @@ def main():
 
             per_model_accuracy.append(accuracy_model)
 
-        print("All model accuracy:",per_model_accuracy)
+        print("All model accuracy:", per_model_accuracy)
         # Calculate the mean accuracy of the four models
-        mean_accuracy = per_model_accuracy.sum()/4
-        print("Mean accuracy:",mean_accuracy)
+        mean_accuracy = sum(per_model_accuracy)/4
+        print("Mean accuracy:", mean_accuracy)
 
     def base_shallow():
         GTZAN_train = GTZAN("train.pkl")
         GTZAN_test = GTZAN("val.pkl")
-        
+
         train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
         test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
-        
+
         model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
-        
+
         optimiser = optim.Adam(model.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
-        
+
         criterion = nn.CrossEntropyLoss()
-        
+
         summary_writer = SummaryWriter('logs', flush_secs=5)
-        
+
         trainer = Trainer(
             model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
         )
-        
-        
+
+
         genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
-
         test_preds, test_labels = trainer.train(epochs = 1, val_frequency = 1) # runs validated epoch+1%val_freq
+        test_preds = list(test_preds)
+        test_labels = list(test_labels)
+
         conf_matrix = confusion_matrix(test_labels, test_preds, normalize = 'true')
-        print(test_labels)
+        df_cm = pd.DataFrame(conf_matrix, index=[genre for genre in genre_list], columns=[genre for genre in genre_list])
         print(conf_matrix)
-        conf_heatmap = sns.heatmap(conf_matrix, annot=True)
-        conf_heatmap.figure.savefig("output.png")
-        summary_writer.add_figure("Confusion Matrix", conf_heatmap)
+        plt.figure(figsize=(10, 8))
+        conf_heatmap = sns.heatmap(df_cm, annot=True)
+        conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="100 Epoch Model")
+        summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
 
         summary_writer.close()
 
-    base_shallow()  
+    base_shallow()
     # shallow_and_ext1()
-    
+
 class shallow_CNN(nn.Module):
     def __init__(self, height:int, width: int, channels: int, class_count: int):
         super().__init__()
@@ -239,6 +242,7 @@ class Trainer:
         self.criterion = criterion
         self.optimiser = optimiser
         self.summary_writer = summary_writer
+    
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
         for epoch in range(0, epochs):
@@ -274,7 +278,7 @@ class Trainer:
 
 
             if ((epoch + 1) % val_frequency) == 0:
-                print("In test if")
+                print("Train accuracy:", train_accuracy)
                 test_preds, test_labels = self.test()
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
@@ -308,10 +312,10 @@ class Trainer:
         all_labels_tensor = torch.stack(all_labels)
         preds = preds_tensor.argmax(-1)
 
-        preds = list(preds)
-        all_labels = list(all_labels_tensor)
+        # preds = list(preds)
+        # all_labels = list(all_labels_tensor)
 
-        return preds, all_labels
+        return preds, all_labels_tensor
 
 if __name__ == "__main__":
     main()
