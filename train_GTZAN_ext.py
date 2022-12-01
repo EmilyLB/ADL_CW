@@ -251,7 +251,7 @@ class Trainer:
         self.criterion = criterion
         self.optimiser = optimiser
         self.summary_writer = summary_writer
-    
+
     def train(self, epochs: int, val_frequency: int):
         self.model.train()
         for epoch in range(0, epochs):
