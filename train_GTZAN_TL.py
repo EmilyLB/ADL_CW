@@ -113,6 +113,7 @@ class Trainer:
                 labels = labels.to(self.device)
                 self.optimiser.zero_grad()
 
+                # transforming the batch and converting it to 3 channels
                 new_batch = []
                 for i in range(0, len(batch)):
                     tmp = batch[i]
@@ -120,17 +121,12 @@ class Trainer:
                     new_batch.append(tmp)
                 new_batch = torch.stack(new_batch)
 
-                # batch_repeated = batch.expand(len(batch), 3, 80, 80)
                 batch_repeated = new_batch.expand(len(new_batch), 3, 224, 224)
                 batch_repeated = batch_repeated.to(self.device)
 
-                # output = self.model.forward(batch_repeated)
                 output = self.model(batch_repeated)
 
-                # penalty = 1e-4
-                # l1_norm = sum(p.abs().sum() for p in self.model.parameters())
                 loss = self.criterion(output, labels)
-                # loss += (penalty * l1_norm)
 
                 loss.backward()
                 self.optimiser.step()
@@ -170,6 +166,7 @@ class Trainer:
                 batch = batch.to(self.device)
                 labels = labels.to(self.device)
 
+                # transforming the batch and converting it to 3 channels
                 new_batch = []
                 for i in range(0, len(batch)):
                     tmp = batch[i]
