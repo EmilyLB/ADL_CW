@@ -133,7 +133,7 @@ def main():
 
         genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
-        test_preds, test_labels = trainer.train(epochs = 10, val_frequency = 1) # runs validated epoch+1%val_freq
+        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 1) # runs validated epoch+1%val_freq
         # test_preds, test_labels, pop_match, hip_hop_match, reggae_match = trainer.train(epochs = 10, val_frequency = 1) # runs validated epoch+1%val_freq
 
         test_preds = list(test_preds.cpu().numpy())
@@ -258,6 +258,7 @@ class Trainer:
         for epoch in range(0, epochs):
             print("epoch no", epoch)
             self.model.train() # Sets module in train mode
+            total_training_loss = 0
             for _, batch, labels, _ in self.train_loader:
                 batch = batch.to(self.device)
                 labels = labels.to(self.device)
@@ -270,6 +271,7 @@ class Trainer:
 
                 loss = self.criterion(output, labels)
                 loss += (penalty * l1_norm)
+                total_training_loss += loss.item()
 
                 self.optimiser.zero_grad()
                 loss.backward()
@@ -285,16 +287,15 @@ class Trainer:
                 # self.summary_writer.add_scalar('accuracy/train', train_accuracy, epoch)
                 # self.summary_writer.add_scalar('loss/train', loss.item(), epoch)
 
-
+            average_training_loss = total_training_loss / len(self.train_loader)
             if ((epoch + 1) % val_frequency) == 0:
-                test_accuracy, test_loss, test_preds, test_labels = self.test()
-                # test_accuracy, test_loss, test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
-
                 preds = output.argmax(-1)
                 train_accuracy = self.accuracy(preds, labels) * 100
                 print("Train accuracy:", train_accuracy)
+                test_accuracy, average_test_loss, test_preds, test_labels = self.test()
+                # test_accuracy, test_loss, test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
                 self.summary_writer.add_scalars('accuracy', {"train":train_accuracy, "test":test_accuracy}, epoch)
-                self.summary_writer.add_scalars('loss', {"train":loss.item(), "test":test_loss.item()}, epoch)
+                self.summary_writer.add_scalars('loss', {"train":average_training_loss), "test":average_test_loss}, epoch)
 
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
@@ -312,6 +313,7 @@ class Trainer:
         all_labels = []
         total_loss = 0
         self.model.eval() # Sets module in evaluation
+        total_loss = 0
 
         # No need to track gradients for validation since we're not optimising
         with torch.no_grad():
@@ -321,23 +323,27 @@ class Trainer:
                 outputs = self.model(batch)
                 preds.extend(list(outputs))
                 all_labels.extend(list(labels))
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
 
-                for i in range(0, len(batch)): #for each value in the batch
-                    output = torch.argmax(outputs[i])
-                    if (labels[i] == 7) and (output == 7):
-                        pop_match = batch[i]
-                    if (labels[i] == 4) and (output == 9):
-                        hip_hop_match = batch[i]
-                    if (labels[i] == 9) and (output == 4):
-                        reggae_match = batch[i]
+                # for i in range(0, len(batch)): #for each value in the batch
+                #     output = torch.argmax(outputs[i])
+                #     if (labels[i] == 7) and (output == 7):
+                #         pop_match = batch[i]
+                #     if (labels[i] == 4) and (output == 9):
+                #         hip_hop_match = batch[i]
+                #     if (labels[i] == 9) and (output == 4):
+                #         reggae_match = batch[i]
 
         # This is for the tensorboard loss curve
-        penalty = 1e-4
-        l1_norm = sum(p.abs().sum() for p in self.model.parameters())
-        loss = self.criterion(outputs, labels)
-        loss += (penalty * l1_norm)
+        # penalty = 1e-4
+        # l1_norm = sum(p.abs().sum() for p in self.model.parameters())
+
+        # loss += (penalty * l1_norm)
 
         accuracy = evaluate(preds, "val.pkl")
+        average_loss = total_loss / len(self.test_loader)
+
 
         preds_tensor = torch.stack(preds)
         all_labels_tensor = torch.stack(all_labels)
@@ -346,7 +352,7 @@ class Trainer:
         # preds = list(preds)
         # all_labels = list(all_labels_tensor)
 
-        return accuracy, loss, preds, all_labels_tensor #, pop_match, hip_hop_match, reggae_match
+        return accuracy, average_loss, preds, all_labels_tensor #, pop_match, hip_hop_match, reggae_match
 
 
 if __name__ == "__main__":
