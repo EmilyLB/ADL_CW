@@ -5,18 +5,20 @@ import torchvision
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from multiprocessing import cpu_count #check if we can use this
-from typing import NamedTuple #check if we can use this
+from multiprocessing import cpu_count
+from typing import NamedTuple
 
 from dataset import GTZAN
 from evaluation import evaluate
 
+# For optimiser
 import torch.optim as optim
 from torch.optim.optimizer import Optimizer
 
 # For tensorboard
 from torch.utils.tensorboard import SummaryWriter
 
+# For scheduler
 from torch.optim.lr_scheduler import StepLR
 
 class SpectrogramShape(NamedTuple):
@@ -24,47 +26,57 @@ class SpectrogramShape(NamedTuple):
     width: int
     channels: int
 
+# uses the GPU if available, otherwise runs on CPU
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
 else:
     DEVICE = torch.device("cpu")
 
 def main():
-    print("Total epochs 40, batch size 64, learning rate 1e-3, resnet18, Adam optimiser")
+    print("Total epochs 30, batch size 64, learning rate 1e-3, resnet18, Adam optimiser")
+    """
+    This is transforming our data so that it is better suited for resnet-18, 
+    as it has more resemblance to the images used to train resnet-18.
+    """
     all_transforms = transforms.Compose([
         transforms.Resize((224,224)),
         transforms.ToPILImage(),
         transforms.ToTensor(),
-        transforms.Normalize(
+        transforms.Normalize( # dividing by 3 as initial state of spectrograms only have one channel
             torch.tensor((0.4850 + 0.4560 + 0.4060) / 3),
             torch.tensor((0.2290 + 0.2240 + 0.2250) / 3),
         )
     ])
 
+    # Get train and test data using dataset.py
     GTZAN_train = GTZAN("train.pkl")
     train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
 
     GTZAN_test = GTZAN("val.pkl")
     test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
+    # Gets the resnet-18 model including the trained parameters
     model_res = torchvision.models.resnet18(pretrained=True)
 
+    # Changing the final layer to map to 10 classes
     num_features = model_res.fc.in_features
     model_res.fc = nn.Linear(num_features, 10)
     model_res = model_res.to(DEVICE)
 
+    # define hyperparameters for Trainer
     optimiser = optim.Adam(model_res.parameters(), lr=1e-3, betas=(0.9,0.999), eps=1e-08)
     exp_lr_scheduler = StepLR(optimiser, step_size=7, gamma=0.1)
-
     criterion = nn.CrossEntropyLoss()
 
     summary_writer = SummaryWriter('logs', flush_secs=5)
 
+    # instantiates Trainer with the resnet-18 model
     trainer = Trainer(
         model_res, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer, all_transforms, exp_lr_scheduler,
     )
 
-    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 5) # runs validated epoch+1%val_freq
+    # training the model and returning the results of the validation data on the last epoch 
+    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 5)
 
     summary_writer.close()
 
@@ -90,7 +102,8 @@ class Trainer:
         self.summary_writer = summary_writer
         self.all_transforms = all_transforms
         self.scheduler = scheduler
-
+    
+    """ This function trains the model and evaluates the performance every {val_frequency} epochs."""
     def train(self, epochs: int, val_frequency: int):
         for epoch in range(0, epochs):
             print("epoch no", epoch)
@@ -139,6 +152,7 @@ class Trainer:
 
         return test_preds, test_labels
 
+    # This function calculates the accuracy of the model
     def accuracy(self, preds, labels):
         assert len(labels) == len(preds)
         acc = float((preds == labels).sum()) / len(labels)
@@ -148,7 +162,7 @@ class Trainer:
         preds = []
         all_labels = []
         total_loss = 0
-        self.model.eval() # Sets module in evaluation
+        self.model.eval() # Sets module in evaluation mode
 
         # No need to track gradients for validation since we're not optimising
         with torch.no_grad():
