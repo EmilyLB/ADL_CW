@@ -277,6 +277,7 @@ class Trainer:
         for epoch in range(0, epochs):
             print("epoch no", epoch)
             self.model.train() # Sets module in train mode
+            total_training_loss = 0
             for _, batch, labels, _ in self.train_loader:
                 batch = batch.to(self.device)
                 labels = labels.to(self.device)
@@ -289,21 +290,23 @@ class Trainer:
 
                 loss = self.criterion(output, labels)
                 loss += (penalty * l1_norm)
+                total_training_loss += loss.item()
 
                 self.optimiser.zero_grad()
                 loss.backward()
                 self.optimiser.step()
 
+            average_training_loss = total_training_loss / len(self.train_loader)
             if ((epoch + 1) % val_frequency) == 0:
                 preds = output.argmax(-1)
                 train_accuracy = self.accuracy(preds, labels) * 100
                 print("Train accuracy:", train_accuracy)
 
-                test_accuracy, test_loss, test_preds, test_labels = self.test()
+                test_accuracy, average_test_loss, test_preds, test_labels = self.test()
                 # test_accuracy, test_loss, test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
 
                 self.summary_writer.add_scalars('accuracy', {"train":train_accuracy, "test":test_accuracy}, epoch)
-                self.summary_writer.add_scalars('loss', {"train":loss.item(), "test":test_loss.item()}, epoch)
+                self.summary_writer.add_scalars('loss', {"train":average_training_loss, "test":average_test_loss}, epoch)
 
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
@@ -322,6 +325,7 @@ class Trainer:
         all_labels = []
         total_loss = 0
         self.model.eval() # Sets module in evaluation mode
+        total_loss = 0
 
         # No need to track gradients for validation since we're not optimising
         with torch.no_grad():
@@ -331,6 +335,9 @@ class Trainer:
                 outputs = self.model(batch)
                 preds.extend(list(outputs))
                 all_labels.extend(list(labels))
+
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
 
                 """
                 Code for producing the spectrograms, only used once
@@ -344,17 +351,14 @@ class Trainer:
                         reggae_match = batch[i]
                 """
 
-        # This is for the tensorboard loss curve
-        loss = self.criterion(outputs, labels)
-
         accuracy = evaluate(preds, "val.pkl")
+        average_loss = total_loss / len(self.test_loader)
 
         preds_tensor = torch.stack(preds)
         all_labels_tensor = torch.stack(all_labels)
         preds = preds_tensor.argmax(-1)
 
-        return accuracy, loss, preds, all_labels_tensor #, pop_match, hip_hop_match, reggae_match
-
+        return accuracy, average_loss, preds, all_labels_tensor #, pop_match, hip_hop_match, reggae_match
 
 if __name__ == "__main__":
     main()
