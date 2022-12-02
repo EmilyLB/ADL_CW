@@ -133,8 +133,9 @@ def main():
 
         genre_list = ["blues", "classical", "country", "disco", "hiphop", "jazz", "metal", "pop", "reggae", "rock"]
 
-        test_preds, test_labels, pop_match, hip_hop_match, reggae_match = trainer.train(epochs = 100, val_frequency = 100) # runs validated epoch+1%val_freq
-        
+        test_preds, test_labels = trainer.train(epochs = 10, val_frequency = 1) # runs validated epoch+1%val_freq
+        # test_preds, test_labels, pop_match, hip_hop_match, reggae_match = trainer.train(epochs = 10, val_frequency = 1) # runs validated epoch+1%val_freq
+
         test_preds = list(test_preds.cpu().numpy())
         test_labels = list(test_labels.cpu().numpy())
 
@@ -146,15 +147,15 @@ def main():
         conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="100 Epoch Model")
         summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
 
-        pop_match_spect = pop_match.cpu().numpy()
-        summary_writer.add_image("Pop Spectrogram", pop_match_spect, dataformats='CHW')
-
-        # pop_match = pop_match[-1, :, :]
-        hiphop_match_spect = hip_hop_match.cpu().numpy()
-        summary_writer.add_image("HipHop Spectrogram", hiphop_match_spect, dataformats='CHW')
-
-        reggae_match_spect = reggae_match.cpu().numpy()
-        summary_writer.add_image("Reggae Spectrogram", reggae_match_spect, dataformats='CHW')
+        # pop_match_spect = pop_match.cpu().numpy()
+        # summary_writer.add_image("Pop Spectrogram", pop_match_spect, dataformats='CHW')
+        #
+        # # pop_match = pop_match[-1, :, :]
+        # hiphop_match_spect = hip_hop_match.cpu().numpy()
+        # summary_writer.add_image("HipHop Spectrogram", hiphop_match_spect, dataformats='CHW')
+        #
+        # reggae_match_spect = reggae_match.cpu().numpy()
+        # summary_writer.add_image("Reggae Spectrogram", reggae_match_spect, dataformats='CHW')
 
         summary_writer.close()
 
@@ -279,22 +280,27 @@ class Trainer:
                 # self.optimiser.step()
                 # self.optimiser.zero_grad() # For the backwards pass
 
-                # For tensorboard output
-                preds = output.argmax(-1)
-                train_accuracy = self.accuracy(preds, labels) * 100
-                self.summary_writer.add_scalar('accuracy/train', train_accuracy, epoch)
-                self.summary_writer.add_scalar('loss/train', loss.item(), epoch)
+                # preds = output.argmax(-1)
+                # train_accuracy = self.accuracy(preds, labels) * 100
+                # self.summary_writer.add_scalar('accuracy/train', train_accuracy, epoch)
+                # self.summary_writer.add_scalar('loss/train', loss.item(), epoch)
 
 
             if ((epoch + 1) % val_frequency) == 0:
+                test_accuracy, test_loss, test_preds, test_labels = self.test()
+                # test_accuracy, test_loss, test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
+
+                preds = output.argmax(-1)
+                train_accuracy = self.accuracy(preds, labels) * 100
                 print("Train accuracy:", train_accuracy)
-                test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
-                
+                self.summary_writer.add_scalars('accuracy', {"train":train_accuracy, "test":test_accuracy}, epoch)
+                self.summary_writer.add_scalars('loss', {"train":loss.item(), "test":test_loss.item()}, epoch)
+
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
                 self.model.train()
 
-        return test_preds, test_labels, pop_match, hip_hop_match, reggae_match
+        return test_preds, test_labels #, pop_match, hip_hop_match, reggae_match
 
     def accuracy(self, preds, labels):
         assert len(labels) == len(preds)
@@ -325,6 +331,12 @@ class Trainer:
                     if (labels[i] == 9) and (output == 4):
                         reggae_match = batch[i]
 
+        # This is for the tensorboard loss curve
+        penalty = 1e-4
+        l1_norm = sum(p.abs().sum() for p in self.model.parameters())
+        loss = self.criterion(outputs, labels)
+        loss += (penalty * l1_norm)
+
         accuracy = evaluate(preds, "val.pkl")
 
         preds_tensor = torch.stack(preds)
@@ -334,7 +346,8 @@ class Trainer:
         # preds = list(preds)
         # all_labels = list(all_labels_tensor)
 
-        return preds, all_labels_tensor, pop_match, hip_hop_match, reggae_match
+        return accuracy, loss, preds, all_labels_tensor #, pop_match, hip_hop_match, reggae_match
+
 
 if __name__ == "__main__":
     main()

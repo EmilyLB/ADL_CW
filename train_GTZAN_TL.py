@@ -17,10 +17,7 @@ from torch.optim.optimizer import Optimizer
 # For tensorboard
 from torch.utils.tensorboard import SummaryWriter
 
-
 from torch.optim.lr_scheduler import StepLR
-
-
 
 class SpectrogramShape(NamedTuple):
     height: int
@@ -33,6 +30,7 @@ else:
     DEVICE = torch.device("cpu")
 
 def main():
+    print("Total epochs 40, batch size 64, learning rate 1e-3, resnet18, Adam optimiser")
     all_transforms = transforms.Compose([
         transforms.Resize((224,224)),
         transforms.ToPILImage(),
@@ -44,10 +42,10 @@ def main():
     ])
 
     GTZAN_train = GTZAN("train.pkl")
-    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 32, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
 
     GTZAN_test = GTZAN("val.pkl")
-    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 32, num_workers = cpu_count(), pin_memory = True)
+    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
 
     model_res = torchvision.models.resnet18(pretrained=True)
 
@@ -55,7 +53,7 @@ def main():
     model_res.fc = nn.Linear(num_features, 10)
     model_res = model_res.to(DEVICE)
 
-    optimiser = optim.Adam(model_res.parameters(), lr=5e-5, betas=(0.9,0.999), eps=1e-08)
+    optimiser = optim.Adam(model_res.parameters(), lr=1e-3, betas=(0.9,0.999), eps=1e-08)
     exp_lr_scheduler = StepLR(optimiser, step_size=7, gamma=0.1)
 
     criterion = nn.CrossEntropyLoss()
@@ -66,7 +64,7 @@ def main():
         model_res, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer, all_transforms, exp_lr_scheduler,
     )
 
-    test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 20) # runs validated epoch+1%val_freq
+    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 5) # runs validated epoch+1%val_freq
 
     summary_writer.close()
 
@@ -116,7 +114,10 @@ class Trainer:
                 # output = self.model.forward(batch_repeated)
                 output = self.model(batch_repeated)
 
+                # penalty = 1e-4
+                # l1_norm = sum(p.abs().sum() for p in self.model.parameters())
                 loss = self.criterion(output, labels)
+                # loss += (penalty * l1_norm)
 
                 loss.backward()
                 self.optimiser.step()
@@ -130,6 +131,7 @@ class Trainer:
             self.scheduler.step()
             if ((epoch + 1) % val_frequency) == 0:
                 print("Training accuracy", train_accuracy)
+                print("Training loss", loss.item())
                 test_preds, test_labels = self.test()
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
