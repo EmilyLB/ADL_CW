@@ -295,7 +295,7 @@ class Trainer:
                 test_accuracy, average_test_loss, test_preds, test_labels = self.test()
                 # test_accuracy, test_loss, test_preds, test_labels, pop_match, hip_hop_match, reggae_match = self.test()
                 self.summary_writer.add_scalars('accuracy', {"train":train_accuracy, "test":test_accuracy}, epoch)
-                self.summary_writer.add_scalars('loss', {"train":average_training_loss), "test":average_test_loss}, epoch)
+                self.summary_writer.add_scalars('loss', {"train":average_training_loss, "test":average_test_loss}, epoch)
 
                 # self.validate() will put the model in validation mode,
                 # so we have to switch back to train mode afterwards
