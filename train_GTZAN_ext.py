@@ -61,9 +61,9 @@ def main():
             # Shuffle the combined genre
             random.seed(10) # so that we get the same shuffle for each run
             random.shuffle(split_by_genre[label])
-        
+
         """
-        Splitting the data into four chunks and training four models. 
+        Splitting the data into four chunks and training four models.
         Then calculating the mean accuracy of all models.
         """
         indexes = [0,1,2,3]
@@ -87,8 +87,8 @@ def main():
             # Length of training data: 11,250
             # Length of testing data: 3,750
 
-            train_loader = DataLoader(data["training"], batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
-            test_loader = DataLoader(data["test"], batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+            train_loader = DataLoader(data["training"], batch_size = 32, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+            test_loader = DataLoader(data["test"], batch_size = 32, num_workers = cpu_count(), pin_memory = True)
 
             model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
 
@@ -98,13 +98,13 @@ def main():
 
             summary_writer = SummaryWriter('logs', flush_secs=5)
 
-            # instantiates Trainer with the shallow model 
+            # instantiates Trainer with the shallow model
             trainer = Trainer(
                 model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
             )
 
-            # training the model and returning the results of the validation data on the last epoch 
-            test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 10)
+            # training the model and returning the results of the validation data on the last epoch
+            test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 100)
 
             # compute model accuracy
             num_correct = (test_preds == test_labels).sum()
@@ -112,7 +112,7 @@ def main():
             per_model_accuracy.append(accuracy_model)
 
             summary_writer.close()
-        
+
         # Calculate the mean accuracy of the four models
         print("All model accuracy:", per_model_accuracy)
         mean_accuracy = sum(per_model_accuracy)/4
@@ -134,13 +134,13 @@ def main():
 
         summary_writer = SummaryWriter('logs', flush_secs=5)
 
-        # instantiates Trainer with the shallow model 
+        # instantiates Trainer with the shallow model
         trainer = Trainer(
             model, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer
         )
 
-        # training the model and returning the results of the validation data on the last epoch 
-        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 5)
+        # training the model and returning the results of the validation data on the last epoch
+        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 100)
         # test_preds, test_labels, pop_match, hip_hop_match, reggae_match = trainer.train(epochs = 10, val_frequency = 1) # runs validated epoch+1%val_freq
 
         # processing results so they can be visualised in a confusion matrix
@@ -155,23 +155,23 @@ def main():
         conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="100 Epoch Model")
         summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
 
-        """ 
+        """
         Code for generating spectrograms but only needed once.
         pop_match_spect = pop_match.cpu().numpy()
         summary_writer.add_image("Pop Spectrogram", pop_match_spect, dataformats='CHW')
-        
+
         # pop_match = pop_match[-1, :, :]
         hiphop_match_spect = hip_hop_match.cpu().numpy()
         summary_writer.add_image("HipHop Spectrogram", hiphop_match_spect, dataformats='CHW')
-        
+
         reggae_match_spect = reggae_match.cpu().numpy()
         summary_writer.add_image("Reggae Spectrogram", reggae_match_spect, dataformats='CHW')
-        """ 
+        """
         summary_writer.close()
 
     """
     run base_shallow() for the implementation of the shallow CNN architecture.
-    run shallow_and_ext1() for the shallow CNN architecture with stratified four-fold cross validation. 
+    run shallow_and_ext1() for the shallow CNN architecture with stratified four-fold cross validation.
     """
     base_shallow()
     # shallow_and_ext1()
@@ -241,7 +241,7 @@ class shallow_CNN(nn.Module):
         x = self.fc2(x)
         return x
 
-    
+
     """ This function is used to intialise our layers before the forward pass.
         We set the biases to be 0 and the weights are initialised from a uniform distribution.
     """

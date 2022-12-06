@@ -35,7 +35,7 @@ else:
 def main():
     print("Total epochs 30, batch size 64, learning rate 1e-3, resnet18, Adam optimiser")
     """
-    This is transforming our data so that it is better suited for resnet-18, 
+    This is transforming our data so that it is better suited for resnet-18,
     as it has more resemblance to the images used to train resnet-18.
     """
     all_transforms = transforms.Compose([
@@ -50,10 +50,10 @@ def main():
 
     # Get train and test data using dataset.py
     GTZAN_train = GTZAN("train.pkl")
-    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 30, shuffle = True, num_workers = cpu_count(), pin_memory = True)
 
     GTZAN_test = GTZAN("val.pkl")
-    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 30, num_workers = cpu_count(), pin_memory = True)
 
     # Gets the resnet-18 model including the trained parameters
     model_res = torchvision.models.resnet18(pretrained=True)
@@ -75,8 +75,8 @@ def main():
         model_res, train_loader, criterion, DEVICE, test_loader, optimiser, summary_writer, all_transforms, exp_lr_scheduler,
     )
 
-    # training the model and returning the results of the validation data on the last epoch 
-    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 5)
+    # training the model and returning the results of the validation data on the last epoch
+    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 30)
 
     summary_writer.close()
 
@@ -102,7 +102,7 @@ class Trainer:
         self.summary_writer = summary_writer
         self.all_transforms = all_transforms
         self.scheduler = scheduler
-    
+
     """ This function trains the model and evaluates the performance every {val_frequency} epochs."""
     def train(self, epochs: int, val_frequency: int):
         for epoch in range(0, epochs):
