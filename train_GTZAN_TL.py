@@ -50,10 +50,10 @@ def main():
 
     # Get train and test data using dataset.py
     GTZAN_train = GTZAN("train.pkl")
-    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+    train_loader = DataLoader(GTZAN_train.dataset, batch_size = 32, shuffle = True, num_workers = cpu_count(), pin_memory = True)
 
     GTZAN_test = GTZAN("val.pkl")
-    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+    test_loader = DataLoader(GTZAN_test.dataset, batch_size = 32, num_workers = cpu_count(), pin_memory = True)
 
     # Gets the resnet-18 model including the trained parameters
     model_res = torchvision.models.resnet18(pretrained=True)
@@ -76,7 +76,7 @@ def main():
     )
 
     # training the model and returning the results of the validation data on the last epoch 
-    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 5)
+    test_preds, test_labels = trainer.train(epochs = 30, val_frequency = 30)
 
     summary_writer.close()
 

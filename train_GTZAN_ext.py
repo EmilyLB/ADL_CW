@@ -87,8 +87,8 @@ def main():
             # Length of training data: 11,250
             # Length of testing data: 3,750
 
-            train_loader = DataLoader(data["training"], batch_size = 64, shuffle = True, num_workers = cpu_count(), pin_memory = True)
-            test_loader = DataLoader(data["test"], batch_size = 64, num_workers = cpu_count(), pin_memory = True)
+            train_loader = DataLoader(data["training"], batch_size = 32, shuffle = True, num_workers = cpu_count(), pin_memory = True)
+            test_loader = DataLoader(data["test"], batch_size = 32, num_workers = cpu_count(), pin_memory = True)
 
             model = shallow_CNN(height = 80, width = 80, channels = 1, class_count = 10)
 
@@ -104,7 +104,7 @@ def main():
             )
 
             # training the model and returning the results of the validation data on the last epoch 
-            test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 10)
+            test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 100)
 
             # compute model accuracy
             num_correct = (test_preds == test_labels).sum()
@@ -140,7 +140,7 @@ def main():
         )
 
         # training the model and returning the results of the validation data on the last epoch 
-        test_preds, test_labels = trainer.train(epochs = 100, val_frequency = 5)
+        test_preds, test_labels = trainer.train(epochs = 200, val_frequency = 1)
         # test_preds, test_labels, pop_match, hip_hop_match, reggae_match = trainer.train(epochs = 10, val_frequency = 1) # runs validated epoch+1%val_freq
 
         # processing results so they can be visualised in a confusion matrix
@@ -152,7 +152,7 @@ def main():
         df_cm = pd.DataFrame(conf_matrix, index=[genre for genre in genre_list], columns=[genre for genre in genre_list])
         plt.figure(figsize=(10, 8))
         conf_heatmap = sns.heatmap(df_cm, annot=True)
-        conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="100 Epoch Model")
+        conf_heatmap.set(xlabel='Predicted Label', ylabel='True Label', title="200 Epoch Model")
         summary_writer.add_figure("Confusion Matrix", conf_heatmap.get_figure())
 
         """ 
@@ -173,8 +173,8 @@ def main():
     run base_shallow() for the implementation of the shallow CNN architecture.
     run shallow_and_ext1() for the shallow CNN architecture with stratified four-fold cross validation. 
     """
-    base_shallow()
-    # shallow_and_ext1()
+    # base_shallow()
+    shallow_and_ext1()
 
 
 class shallow_CNN(nn.Module):
