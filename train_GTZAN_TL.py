@@ -33,7 +33,6 @@ else:
     DEVICE = torch.device("cpu")
 
 def main():
-    print("Total epochs 30, batch size 32, learning rate 1e-3, resnet18, Adam optimiser")
     """
     This is transforming our data so that it is better suited for resnet-18,
     as it has more resemblance to the images used to train resnet-18.
